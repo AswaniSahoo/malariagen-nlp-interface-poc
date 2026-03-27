@@ -24,23 +24,32 @@ Generated:
 | Metric | Value |
 |--------|-------|
 | Queries resolved | 10/10 (100%) |
-| Average confidence | 62% |
-| Entities extracted | 27 total |
+| Average confidence | 84% |
+| Entities extracted | 29 total |
 | API methods covered | 7 (data + analysis + plot) |
+| Edge cases handled | 3/3 (graceful degradation) |
 
-See [`examples/sample_queries.md`](examples/sample_queries.md) for all 10 test queries with full outputs.
+See [`examples/sample_queries.md`](examples/sample_queries.md) for all 10 test queries + 3 edge cases with full outputs.
 
 ## Architecture
 
 ```
-User Query ? Intent Classifier → Entity Extractor → API Call Generator → Executable Code
+User Query → Intent Classifier → Entity Extractor → API Call Generator → Executable Code
 ```
 
-**Current PoC:** Rule-based (keyword matching + regex entity extraction + template code generation)
+**Current PoC:** Rule-based (keyword matching + regex entity extraction + template code generation), with multi-species extraction, region expansion, and out-of-scope detection
 
 **Proposed GSoC:** Fine-tuned LLM (LoRA) + RAG over API docstrings + runtime parameter validation via `@_check_types`
 
-See [`docs/architecture.md`](docs/architecture.md) for the full design rationale and scaling plan.
+See [`docs/architecture.md`](docs/architecture.md) for the full design rationale, pipeline trace examples, and scaling plan.
+
+## Key Capabilities
+
+- **Multi-entity extraction** — gene + country + species in a single query
+- **Multi-species handling** — "divergence between gambiae and coluzzii" → separate `cohort_query` parameters
+- **Region expansion** — "East Africa" → individual country filters (`country in ['Kenya', 'Tanzania', ...]`)
+- **Graceful degradation** — out-of-scope queries return `unknown` with clarification prompt
+- **Pipeline traceability** — full keyword scores → entity matches → code generation trace
 
 ## Repository Structure
 
@@ -50,7 +59,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the full design rationale
 ├── docs/
 │   └── architecture.md             Design rationale, pipeline stages, evaluation plan
 └── examples/
-    └── sample_queries.md           10 demo queries with expected outputs
+    └── sample_queries.md           10 demo queries + 3 edge cases with expected outputs
 ```
 
 ## Context

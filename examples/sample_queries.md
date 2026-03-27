@@ -1,6 +1,6 @@
 # Sample Queries - NLP Interface PoC
 
-Ten natural-language queries demonstrating the translation pipeline from plain English to executable `malariagen_data` API calls.
+Ten natural-language queries demonstrating the translation pipeline from plain English to executable `malariagen_data` API calls, plus three edge-case queries showing graceful out-of-scope handling.
 
 ---
 
@@ -90,7 +90,7 @@ ag3.plot_pairwise_average_fst(
 
 | Field | Value |
 |-------|-------|
-| Intent | `sample_metadata` (20% confidence) |
+| Intent | `sample_metadata` (100% confidence) |
 | Entities | country=tanzania, area=TZ |
 | Explanation | Retrieves sample metadata in Tanzania |
 
@@ -142,45 +142,46 @@ ag3.plot_frequencies_time_series(
 
 ---
 
-## Query 8 - Genetic Divergence Between Species
+## Query 8 - Genetic Divergence Between Species (Multi-Species Extraction)
 
 **Input:** "What is the genetic divergence between gambiae and coluzzii populations?"
 
 | Field | Value |
 |-------|-------|
-| Intent | `pairwise_average_fst` (20% confidence) |
-| Entities | species=gambiae |
-| Explanation | Computes pairwise Fst on chromosome 3L grouped by country |
+| Intent | `plot_snps_dxy` (100% confidence) |
+| Entities | species_1=coluzzii, species_2=gambiae, multi_species=True |
+| Explanation | Plots Dxy across chromosome 2L between coluzzii and gambiae |
 
 ```python
-fst_df = ag3.pairwise_average_fst(
-    contig="3L",
-    cohorts="country",
-    min_cohort_size=10
+ag3.plot_snps_dxy(
+    contig="2L",
+    cohort1_query="taxon == 'coluzzii'",
+    cohort2_query="taxon == 'gambiae'",
+    window_size=20000
 )
 ```
 
-*Note: Low confidence — the query mentions two species but the current PoC extracts only the first. A production system would generate separate cohort queries for each species and use `plot_snps_dxy` or species-aware Fst cohorts.*
+This query demonstrates multi-species entity extraction: both species names are identified and mapped to separate `cohort_query` parameters, and the intent is correctly routed to `plot_snps_dxy` (not `pairwise_average_fst`).
 
 ---
 
-## Query 9 - Species-Specific Metadata
+## Query 9 - Species-Specific Metadata with Region Expansion
 
 **Input:** "List all samples of An. arabiensis from East Africa"
 
 | Field | Value |
 |-------|-------|
-| Intent | `sample_metadata` (40% confidence) |
+| Intent | `sample_metadata` (80% confidence) |
 | Entities | country=east africa, area=[KE, TZ, UG, ET, MZ, MW], species=arabiensis |
 | Explanation | Retrieves sample metadata for arabiensis in East Africa |
 
 ```python
 ag3.sample_metadata(
-    sample_query="taxon == 'arabiensis' and country == 'East Africa'"
+    sample_query="taxon == 'arabiensis' and country in ['Kenya', 'Tanzania', 'Uganda', 'Ethiopia', 'Mozambique', 'Malawi']"
 )
 ```
 
-*Note: "East Africa" is a region grouping, not a single country value. A production system would expand this into individual country filters or use the area code list directly.*
+This query demonstrates region expansion: "East Africa" is expanded into individual country names rather than passed as an invalid string literal, producing a valid `sample_query` that the API can execute.
 
 ---
 
@@ -190,7 +191,7 @@ ag3.sample_metadata(
 
 | Field | Value |
 |-------|-------|
-| Intent | `plot_frequencies_heatmap` (40% confidence) |
+| Intent | `plot_frequencies_heatmap` (60% confidence) |
 | Entities | country=mozambique, area=MZ |
 | Explanation | Plots allele frequency heatmap for Vgsc gene in Mozambique |
 
@@ -202,7 +203,37 @@ ag3.plot_frequencies_heatmap(
 )
 ```
 
-*Note: "Insecticide resistance" is mapped to Vgsc by default. A production system would query multiple resistance-associated genes (Vgsc, Rdl, Ace1, CYP450s) and present combined results.*
+---
+
+## Edge Cases — Out-of-Scope Queries
+
+Three queries that fall outside the system's scope, demonstrating graceful degradation.
+
+### Edge Case 1: "What is the weather like in Nairobi?"
+
+| Field | Value |
+|-------|-------|
+| Intent | `unknown` (0% confidence) |
+| Entities | (none) |
+| ⚠ | LOW CONFIDENCE — system would ask for clarification |
+
+### Edge Case 2: "Tell me about malaria treatment drugs"
+
+| Field | Value |
+|-------|-------|
+| Intent | `unknown` (0% confidence) |
+| Entities | (none) |
+| ⚠ | LOW CONFIDENCE — system would ask for clarification |
+
+### Edge Case 3: "Run a GWAS analysis on chromosome 2L with PCA"
+
+| Field | Value |
+|-------|-------|
+| Intent | `unknown` (0% confidence) |
+| Entities | contig=2L |
+| ⚠ | LOW CONFIDENCE — system would ask for clarification |
+
+The edge cases show that the system extracts valid entities where possible (contig=2L) but correctly refuses to generate an API call when it cannot identify a valid intent, preventing false-positive method matches.
 
 ---
 
@@ -214,14 +245,14 @@ ag3.plot_frequencies_heatmap(
 | 2 | kdr trends over time in Ghana | `plot_frequencies_time_series` | 100% | 4 |
 | 3 | Fst by country on chr 3L | `pairwise_average_fst` | 60% | 2 |
 | 4 | Fst heatmap lower triangle | `plot_pairwise_average_fst` | 100% | 1 |
-| 5 | Samples from Tanzania | `sample_metadata` | 20% | 2 |
+| 5 | Samples from Tanzania | `sample_metadata` | 100% | 2 |
 | 6 | SNP data for Ace1 in Uganda | `snp_calls` | 80% | 4 |
 | 7 | cyp6p3 trends in Burkina Faso | `plot_frequencies_time_series` | 100% | 4 |
-| 8 | Divergence gambiae vs coluzzii | `pairwise_average_fst` | 20% | 1 |
-| 9 | An. arabiensis in East Africa | `sample_metadata` | 40% | 3 |
-| 10 | Resistance mutations in Mozambique | `plot_frequencies_heatmap` | 40% | 2 |
+| 8 | Divergence gambiae vs coluzzii | `plot_snps_dxy` | 100% | 3 |
+| 9 | An. arabiensis in East Africa | `sample_metadata` | 80% | 3 |
+| 10 | Resistance mutations in Mozambique | `plot_frequencies_heatmap` | 60% | 2 |
 
-**Overall:** 10/10 resolved, 62% average confidence, 27 total entities extracted.
+**Overall:** 10/10 resolved, 84% average confidence, 29 total entities extracted, 3/3 edge cases handled gracefully.
 
 ---
 

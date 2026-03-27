@@ -21,13 +21,14 @@ The system translates plain-language questions from researchers into executable 
                     API method via          entities: gene,        Python code with
                     keyword scoring         country, contig,       correct parameter
                     + category boost        species, annotation    names and values
+                    + context boost         (multi-entity aware)   + region expansion
 ```
 
 ### Stage 1: Intent Classification
 
 Maps the user's natural-language query to the most relevant `malariagen_data` API method.
 
-**Current PoC approach:** Keyword scoring against a per-method keyword list, with contextual boosts for category hints ("show" → plot, "compute" → analysis, "get" → data) and phrase-level matching ("over time" → `plot_frequencies_time_series`).
+**Current PoC approach:** Keyword scoring against a per-method keyword list, with contextual boosts for category hints ("show" → plot, "compute" → analysis, "get"/"what...have" → data), phrase-level matching ("over time" → `plot_frequencies_time_series`), and multi-species divergence detection ("divergence between...populations" → `plot_snps_dxy`).
 
 **Proposed GSoC approach:** Replace keyword scoring with either:
 - A fine-tuned LLM (LoRA on LLaMA-3.1-8B, leveraging [llama-task-agent](https://github.com/AswaniSahoo/llama-task-agent) architecture) that maps NL queries to method names
@@ -40,13 +41,19 @@ Extracts structured entities from the query and maps them to valid API parameter
 **Entity types supported:**
 
 | Entity | Example Input | Mapped Value |
-|--------|--------------|--------------|
+|--------|--------------|--------------| 
 | Gene name | "Vgsc", "kdr", "Ace1" | Transcript ID (e.g., `AGAP004707-RD`) |
 | Country | "Kenya", "Burkina Faso" | ISO code or sample query |
+| Region | "East Africa" | Expanded to individual country list |
 | Contig | "chromosome 2L", "3R" | Normalised contig name |
-| Species | "An. gambiae", "coluzzii" | Normalised taxon string |
+| Species (single) | "An. gambiae", "coluzzii" | Normalised taxon string |
+| Species (multi) | "between gambiae and coluzzii" | Two separate taxon queries |
 | Cohort grouping | "by country", "by species" | Cohort column name |
 | Annotation preference | "lower triangle", "with errors" | Annotation parameter value |
+
+**Key improvements over initial PoC:**
+- **Multi-species extraction:** Detects and extracts multiple species names in a single query (e.g., "divergence between gambiae and coluzzii"), mapping them to separate `cohort_query` parameters
+- **Region expansion:** "East Africa" is expanded into individual country names (`['Kenya', 'Tanzania', 'Uganda', 'Ethiopia', 'Mozambique', 'Malawi']`) rather than passed as an invalid string literal
 
 **Proposed GSoC approach:** Named Entity Recognition (NER) model fine-tuned on genomics vocabulary, grounded in the API's existing `Annotated` type aliases and `@doc()` docstrings. The 236 domain terms from [biodiversity-publication-analyzer](https://github.com/AswaniSahoo/biodiversity-publication-analyzer) provide a starting vocabulary.
 
@@ -54,13 +61,27 @@ Extracts structured entities from the query and maps them to valid API parameter
 
 Combines the resolved intent (method name) and extracted entities (parameter values) into executable Python code.
 
-**Current PoC approach:** Template-based generation with per-method code templates that slot in entity values.
+**Current PoC approach:** Template-based generation with per-method code templates that slot in entity values, with region expansion for multi-country areas and multi-species cohort query generation.
 
 **Proposed GSoC approach:**
 - Validate generated parameters against the method's type hints at runtime (using the same `@_check_types` / `typeguard` infrastructure the API already uses)
 - Use `describe_api()` output (PR #904) for method-level discovery
 - Use `inspect.signature()` + `typing.get_type_hints()` for parameter-level introspection
 - Catch and explain validation errors in plain language
+
+---
+
+## Edge Case Handling
+
+The PoC demonstrates graceful degradation for queries outside the system's scope:
+
+| Query Type | Behaviour |
+|-----------|-----------|
+| Unrelated topic (weather, drugs) | Returns `unknown` intent with 0% confidence, prompts for clarification |
+| Unsupported analysis (GWAS, PCA) | Returns `unknown` intent, extracts valid entities where possible (e.g., contig) |
+| Ambiguous queries | Returns best-match intent with low confidence, signals uncertainty |
+
+This prevents false-positive method matches and provides a clear signal when the system needs human guidance.
 
 ---
 
@@ -83,9 +104,9 @@ The PoC maintains a manual registry of 7 API methods with their parameters, type
 The PoC includes domain-specific dictionaries that map natural-language terms to valid API values:
 
 - **11 gene/transcript mappings** — insecticide resistance genes (Vgsc/kdr, Rdl, Ace1, CYP450s, GSTE2)
-- **24 country/region mappings** — African countries + regional groupings (East Africa, West Africa)
+- **24 country/region mappings** — African countries + regional groupings (East Africa, West Africa) with automatic expansion
 - **15 contig aliases** — chromosome names in various formats
-- **8 species mappings** — *Anopheles* species name normalization
+- **8 species mappings** — *Anopheles* species name normalization (supports multi-species extraction)
 
 In the full implementation, these would be populated from the API's sample metadata (`ag3.sample_metadata()`) and genome annotation data, ensuring they stay current as new data releases are added.
 
@@ -93,7 +114,7 @@ In the full implementation, these would be populated from the API's sample metad
 
 ## Evaluation Strategy
 
-The PoC demonstrates the concept with 10 test queries. The proposed GSoC evaluation suite would include:
+The PoC demonstrates the concept with 10 test queries + 3 edge cases. The proposed GSoC evaluation suite would include:
 
 1. **50+ natural-language queries** with expected API calls — covering all method categories
 2. **Intent accuracy** — % of queries mapped to the correct method
