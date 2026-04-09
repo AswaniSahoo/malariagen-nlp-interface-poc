@@ -1,6 +1,6 @@
 # Sample Queries - NLP Interface PoC
 
-Ten natural-language queries demonstrating the translation pipeline from plain English to executable `malariagen_data` API calls, plus three edge-case queries showing graceful out-of-scope handling.
+Thirteen natural-language queries demonstrating the translation pipeline from plain English to executable `malariagen_data` API calls, plus three edge-case queries showing graceful out-of-scope handling.
 
 ---
 
@@ -205,6 +205,136 @@ ag3.plot_frequencies_heatmap(
 
 ---
 
+## Query 11 — Haplotype Network Visualization
+
+**Input:** "Show me the haplotype network for Vgsc in Burkina Faso"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_haplotype_network` (80% confidence) |
+| Entities | gene=vgsc, transcript=AGAP004707-RD, country=burkina faso, area=BF |
+| Explanation | Plots median-joining haplotype network for Vgsc gene in Burkina Faso |
+
+```python
+ag3.plot_haplotype_network(
+    region="AGAP004707-RD",
+    color="country",
+    sample_query="country == 'Burkina Faso'"
+)
+```
+
+This query targets the `plot_haplotype_network` method which visualises genetic distances between haplotypes using Cytoscape. The `color` parameter partitions haplotype nodes by country, and `region` accepts a transcript ID to define the genomic region.
+
+---
+
+## Query 12 — Haplotype Clustering
+
+**Input:** "Cluster haplotypes in the Ace1 gene region"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_haplotype_clustering` (80% confidence) |
+| Entities | gene=ace1, transcript=AGAP001356-RA |
+| Explanation | Hierarchically clusters haplotypes in the Ace1 gene region |
+
+```python
+ag3.plot_haplotype_clustering(
+    region="AGAP001356-RA",
+    color="country",
+    title="Ace1 haplotype clustering"
+)
+```
+
+This query exercises `plot_haplotype_clustering` which produces an interactive dendrogram of haplotype distances. The method computes pairwise Hamming distances between phased haplotypes and uses hierarchical clustering.
+
+---
+
+## Query 13 — Runs of Homozygosity
+
+**Input:** "Show heterozygosity and runs of homozygosity for sample AN0131-C on chromosome 3R"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_roh` (80% confidence) |
+| Entities | sample=AN0131-C, contig=3R |
+| Explanation | Plots windowed heterozygosity with inferred ROH for a single sample |
+
+```python
+ag3.plot_roh(
+    sample="AN0131-C",
+    region="3R"
+)
+```
+
+This query targets `plot_roh` which combines windowed heterozygosity, HMM-inferred runs of homozygosity, and a gene track into a single stacked figure. The `sample` parameter takes a specific sample ID and `region` takes a contig name.
+
+---
+
+## Query 11 — Haplotype Network Visualization
+
+**Input:** "Show me the haplotype network for Vgsc in Burkina Faso"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_haplotype_network` (100% confidence) |
+| Entities | gene=vgsc, transcript=AGAP004707-RD, country=burkina faso, area=BF |
+| Explanation | Plots median-joining haplotype network for vgsc in Burkina Faso |
+
+```python
+ag3.plot_haplotype_network(
+    region="AGAP004707-RD",
+    color="country",
+    sample_query="country == 'Burkina Faso'"
+)
+```
+
+This query targets the `plot_haplotype_network` method which visualises genetic distances between haplotypes using Cytoscape. The `color` parameter partitions haplotype nodes by country, and `region` accepts a transcript ID to define the genomic region.
+
+---
+
+## Query 12 — Haplotype Clustering
+
+**Input:** "Cluster haplotypes in the Ace1 gene region"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_haplotype_clustering` (60% confidence) |
+| Entities | gene=ace1, transcript=AGAP001356-RA |
+| Explanation | Hierarchically clusters haplotypes in the ace1 gene region |
+
+```python
+ag3.plot_haplotype_clustering(
+    region="AGAP001356-RA",
+    color="country",
+    title="ace1 haplotype clustering"
+)
+```
+
+This query exercises `plot_haplotype_clustering` which produces an interactive dendrogram of haplotype distances. The method computes pairwise Hamming distances between phased haplotypes and uses hierarchical clustering.
+
+---
+
+## Query 13 — Runs of Homozygosity
+
+**Input:** "Show heterozygosity and runs of homozygosity for sample AN0131-C on chromosome 3R"
+
+| Field | Value |
+|-------|-------|
+| Intent | `plot_roh` (100% confidence) |
+| Entities | sample=AN0131-C, contig=3R |
+| Explanation | Plots windowed heterozygosity with inferred ROH for sample AN0131-C on 3R |
+
+```python
+ag3.plot_roh(
+    sample="AN0131-C",
+    region="3R"
+)
+```
+
+This query targets `plot_roh` which combines windowed heterozygosity, HMM-inferred runs of homozygosity, and a gene track into a single stacked figure. The `sample` parameter takes a specific sample ID and `region` takes a contig name.
+
+---
+
 ## Edge Cases — Out-of-Scope Queries
 
 Three queries that fall outside the system's scope, demonstrating graceful degradation.
@@ -251,8 +381,11 @@ The edge cases show that the system extracts valid entities where possible (cont
 | 8 | Divergence gambiae vs coluzzii | `plot_snps_dxy` | 100% | 3 |
 | 9 | An. arabiensis in East Africa | `sample_metadata` | 80% | 3 |
 | 10 | Resistance mutations in Mozambique | `plot_frequencies_heatmap` | 60% | 2 |
+| 11 | Haplotype network for Vgsc in Burkina Faso | `plot_haplotype_network` | 100% | 4 |
+| 12 | Cluster haplotypes in Ace1 region | `plot_haplotype_clustering` | 60% | 2 |
+| 13 | Heterozygosity + ROH for sample on 3R | `plot_roh` | 100% | 2 |
 
-**Overall:** 10/10 resolved, 84% average confidence, 29 total entities extracted, 3/3 edge cases handled gracefully.
+**Overall:** 13/13 resolved, 85% average confidence, 37 total entities extracted, 3/3 edge cases handled gracefully.
 
 ---
 

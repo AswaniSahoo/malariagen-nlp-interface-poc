@@ -23,13 +23,13 @@ Generated:
 
 | Metric | Value |
 |--------|-------|
-| Queries resolved | 10/10 (100%) |
-| Average confidence | 84% |
-| Entities extracted | 29 total |
-| API methods covered | 7 (data + analysis + plot) |
+| Queries resolved | 13/13 (100%) |
+| Average confidence | 85% |
+| Entities extracted | 37 total |
+| API methods covered | 10 (data + analysis + plot) |
 | Edge cases handled | 3/3 (graceful degradation) |
 
-See [`examples/sample_queries.md`](examples/sample_queries.md) for all 10 test queries + 3 edge cases with full outputs.
+See [`examples/sample_queries.md`](examples/sample_queries.md) for all 13 test queries + 3 edge cases with full outputs.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the full design rationale
 ├── docs/
 │   └── architecture.md             Design rationale, pipeline stages, evaluation plan
 └── examples/
-    └── sample_queries.md           10 demo queries + 3 edge cases with expected outputs
+    └── sample_queries.md           13 demo queries + 3 edge cases with expected outputs
 ```
 
 ## Context
