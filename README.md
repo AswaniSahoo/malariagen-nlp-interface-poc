@@ -56,8 +56,12 @@ See [`docs/architecture.md`](docs/architecture.md) for the full design rationale
 ```
 ├── README.md                        This file
 ├── nlp_interface_poc.ipynb          Main notebook — full working pipeline
+├── src/
+│   └── schema_extractor.py         API schema extraction (24 methods, 7 categories)
 ├── docs/
-│   └── architecture.md             Design rationale, pipeline stages, evaluation plan
+│   ├── architecture.md             Design rationale, pipeline stages, evaluation plan
+│   ├── evaluation.md               Evaluation methodology and transition roadmap
+│   └── CHANGELOG.md                Project history and version tracking
 └── examples/
     └── sample_queries.md           13 demo queries + 3 edge cases with expected outputs
 ```
